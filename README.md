@@ -30,9 +30,9 @@ Likely your default C++ compiler is out of date, check for newer compiler availa
 
  Check if you have HDF5 libraries installed on your machine. If you do not they can be downloaded and installed [https://support.hdfgroup.org/HDF5/](https://support.hdfgroup.org/HDF5/ "HDF5 Homepage")
 
- If you have HDF5 installed, and are still getting this message, make sure your $HDF5_DIR variable is pointing to the correct directory. If it is, try adding -DCMAKE_PREFIX_PATH=/path/to/HDF5 to cmake command.
+ If you have HDF5 installed, and are still getting this message, make sure your $HDF5_DIR variable is pointing to the correct directory. If it is, try adding -DCMAKE_PREFIX_PATH=/path/to/HDF5 to the cmake command.
 
- There is also a known issue with some versions of CMAKE and the HDF5 library. If you are running CMAKE versions 3.6.0, 3.6.1, maybe others, see if you have access to an earlier or later version of CMAKE and try that instead.
+ There is also a known issue with some versions of CMAKE and the HDF5 library. If you are running CMAKE versions 3.6.0 or 3.6.1 see if you have access to an earlier or later version of CMAKE and try using it instead.
 
  
 

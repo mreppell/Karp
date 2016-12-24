@@ -331,7 +331,7 @@ int main(int argc, char** argv) {
 	  likelihoods.nummapped = (double) num_processed;
 
 	  if (opt.minimum_frequency_cutoff < 0) {
-	    std::cout << "Setting frequency to 1/" << likelihoods.nummapped << std::endl;
+	    std::cout << "Setting minimum EM update frequency to 1/" << likelihoods.nummapped << std::endl;
 	    opt.minimum_frequency_cutoff = 1.0/likelihoods.nummapped;
 	    likelihoods.minimum_frequency_cutoff = opt.minimum_frequency_cutoff;
 	  }

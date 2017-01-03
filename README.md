@@ -85,7 +85,7 @@ In the repo there is a directory labeled `example`, this contains some toy files
 | reference.fasta                  | Reference database in fasta format, contains 500 sequences |
 | reference.fasta.fai              | Tabix index of reference fasta file                        |
 | reference.tax                    | Taxonomy file with description of sequences in reference.fasta   |
-| simulated.data.fastq.gz          | Fastq file containing 10,000 reads with mixture of organisims from reference.fasta |
+| simulated.data.fastq.gz          | Fastq file containing 10,000 reads with mixture of organisms from reference.fasta |
 | simulated.data.actual_counts.txt | True origins of reads in simulated.data.fastq.gz |
 
 The first step of running Karp is to create a k-mer index for pseudoalignment:
@@ -100,7 +100,7 @@ This will create the index file `reference.index`. Next we quantify the simulate
 ./karp -c quantify -r reference.fasta -i reference.index -f simulated.data.fastq.gz -o simulated.results -t reference.tax 
 ``
 
-In the example folder we now have the files `simulated.results.freqs` and `simulated.results.log`. `simulated.results.freqs` contains Karp's estimates of the number of reads each reference sequence in `reference.fasta` contributed to the simulated sample. `simulated.results.log` contatins information about the Karp run we just performed.
+In the example folder we now have the files `simulated.results.freqs` and `simulated.results.log`. `simulated.results.freqs` contains Karp's estimates of the number of reads each reference sequence in `reference.fasta` contributed to the simulated sample. `simulated.results.log` contains information about the Karp run we just performed.
 
 ## Trouble Shooting
 

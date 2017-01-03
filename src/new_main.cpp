@@ -133,7 +133,7 @@ int main(int argc, char** argv) {
     cmd.add(threadCount);
     TCLAP::ValueArg<double> illVersion("","phred","Phred offset for base quality scores, default is Phred+33 corresponding to Illumina 1.8+. Other recognized option is \"64\" for Phred+64",false,33,"double");
     cmd.add(illVersion);
-    TCLAP::ValueArg<int> maxIterations("","max_em_it","Maximum number of iterations of EM algorithm before declaring failure to converge [default=250]",false,1000,"int");
+    TCLAP::ValueArg<int> maxIterations("","max_em_it","Maximum number of iterations of EM algorithm before declaring failure to converge [default=1000]",false,1000,"int");
     cmd.add(maxIterations);
     TCLAP::ValueArg<double> minRefFreq("","min_freq","Minimum frequency observable for reference haplotypes, values below this are rounded to zero [default=1/Number of Reads]",false,-99,"double");  
     cmd.add(minRefFreq);
@@ -141,7 +141,7 @@ int main(int argc, char** argv) {
     cmd.add(taxFile);     
     TCLAP::ValueArg<std::string> outFile("o","out","Base name for output files",false,"karp","string");
     cmd.add(outFile);
-    TCLAP::SwitchArg collapseTax("","collapse","Collapse taxonomic labels before estimating frequencies [default=FALSE]",false);
+    TCLAP::SwitchArg collapseTax("","collapse","Collapse taxonomic labels before estimating frequencies and run in Collapse mode [default=FALSE]",false);
     cmd.add(collapseTax);
     TCLAP::SwitchArg readFail("","fail","Output list of read names that fail pseudomapping or likelihood filter [default=FALSE]",false);
     cmd.add(readFail);

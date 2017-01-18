@@ -7,10 +7,12 @@ add_library(karp_core ${sources} ${headers})
 target_include_directories(karp_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_SOURCE_DIR})
 
 add_executable(karp new_main.cpp)
+target_link_libraries(karp karp_core)
 
-find_package( Threads REQUIRED )
-target_link_libraries(karp karp_core pthread)
-add_compile_options(-W1, --no-as-needed)
+find_package(Threads REQUIRED)
+if(CMAKE_THREAD_LIBS_INIT)
+  target_link_libraries(karp "-Wl,--no-as-needed ${CMAKE_THREAD_LIBS_INIT}")
+endif()
 
 if(LINK MATCHES static)
     set(BUILD_SHARED_LIBS OFF)

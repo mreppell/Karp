@@ -114,6 +114,8 @@ Likely your default C++ compiler is out of date, check for newer compiler availa
 
 `cmake -DCMAKE_CXX_COMPILER=/path/to/compiler -DCMAKE_C_COMPILER=/path/to/compiler ..`
 
+************************************************
+
  Error message: `Could NOT find HDF5 (missing: HDF5_LIBRARIES HDF5_INCLUDE_DIRS
   HDF5_HL_LIBRARIES)`
 
@@ -122,7 +124,4 @@ Likely your default C++ compiler is out of date, check for newer compiler availa
  If you have HDF5 installed, and are still getting this message, make sure your $HDF5_DIR variable is pointing to the correct directory. If it is, try adding -DCMAKE_PREFIX_PATH=/path/to/HDF5 to the cmake command.
 
  There is also a known issue with some versions of CMAKE and the HDF5 library. If you are running CMAKE versions 3.6.0 or 3.6.1 see if you have access to an earlier or later version of CMAKE and try using it instead.
-
- 
-
 

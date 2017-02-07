@@ -2,6 +2,8 @@
 
 Karp is a program for identifying the relative frequencies of reference sequences contributing to a pooled DNA sample. Karp was developed with 16S rRNA sequencing as its primary application, but will work in any context where reference sequences are available in fasta format and the pooled DNA is in fastq format with base quality scores. Karp employs a pseudoalignment step to quickly match reads with potential references. Reads are locally aligned to the references they pseudoalign with, and Karp calculates a likelihood of each read originating from each reference using base quality scores. Finally, Karp employs an EM algorithm that uses information from all the reads to accurately estimate the relative frequencies of each reference in the sample.
 
+More details are provided in the manuscript: [Using pseudoalignment and base quality to accurately quantify microbial community composition](http://biorxiv.org/content/early/2017/01/09/097949)
+
 ## Installation
 
 After cloning the repository, or downloading and decompressing the tarball follow the following steps to install Karp. In the Karp directory

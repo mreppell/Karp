@@ -447,7 +447,7 @@ double ReadProcessor::Alignment(const char* &s1,const char* &s2,const char* &q1,
     rs2 = rs2 + twinletter(s2[s2_size-(jj+1)]);	     
   }
     
-  aligner.Align(rs2, seqstring.c_str(), linelength, filter, &reverse_alignment);
+  aligner.Align(rs2.c_str(), seqstring.c_str(), linelength, filter, &reverse_alignment);
 
   double reverse_likelihood = calcLikelihood(reverse_alignment.cigar_string,q2,illumina_version);
   

@@ -382,7 +382,12 @@ void ReadProcessor::operator()() {
 	if (get==mp.zsupport[thread_num].end()) {
 	  std::pair<unsigned int, bool> nent(it->first,it->second);
 	  mp.zsupport[thread_num].insert(nent);
+	} else {
+	  if (get->second==false && it->second==true) {
+	    get->second=true;
+	  }
 	}
+
       }
       mp.numreads[thread_num]+=thread_out.numreads;
       mp.numstrict[thread_num]+=thread_out.numstrict;
@@ -437,9 +442,9 @@ double ReadProcessor::Alignment(const char* &s1,const char* &s2,const char* &q1,
   StripedSmithWaterman::Alignment reverse_alignment;
 
   int s2_size = std::strlen(s2);
-  char rs2[s2_size];	  
+  std::string rs2;	  
   for (int jj=0;jj<s2_size;++jj) {
-    rs2[jj] = twinletter(s2[s2_size-(jj+1)]);	     
+    rs2 = rs2 + twinletter(s2[s2_size-(jj+1)]);	     
   }
     
   aligner.Align(rs2, seqstring.c_str(), linelength, filter, &reverse_alignment);

@@ -133,7 +133,7 @@ int main(int argc, char** argv) {
     cmd.add(threadCount);
     TCLAP::ValueArg<double> illVersion("","phred","Phred offset for base quality scores, default is Phred+33 corresponding to Illumina 1.8+. Other recognized option is \"64\" for Phred+64",false,33,"double");
     cmd.add(illVersion);
-    TCLAP::ValueArg<int> maxIterations("","max_em_it","Maximum number of iterations of EM algorithm before declaring failure to converge [default=1000]",false,1000,"int");
+    TCLAP::ValueArg<int> maxIterations("","max_em_it","Maximum number of iterations of EM algorithm before declaring failure to converge [default=1000]",false,2500,"int");
     cmd.add(maxIterations);
     TCLAP::ValueArg<double> minRefFreq("","min_freq","Minimum frequency observable for reference haplotypes, values below this are rounded to zero [default=1/Number of Reads]",false,-99,"double");  
     cmd.add(minRefFreq);

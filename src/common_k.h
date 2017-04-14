@@ -53,7 +53,7 @@ ProgramOptions() :
     single_end(false),
     strand_specific(false),
     minimum_frequency_cutoff(-99),
-    max_em_iterations(1000)
+    max_em_iterations(2500)
 //    em_restarts(3)
   {}
 };

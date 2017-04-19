@@ -1,6 +1,7 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <iomanip>
 
 #include "taxonomy.hpp"
 #include "common_k.h"
@@ -178,6 +179,7 @@ void EarlyTaxonomy::buildTaxonomyGraph(HLK& likelihoods) {
   
 void EarlyTaxonomy::outputnode(std::string& nodename,std::string rankID,int order,std::ofstream& outfile,double& nummapped) {
 
+  
   //std::cout << nodename << std::endl;
   mgraph_get get1 = taxonomy_graph.find(nodename);
  
@@ -197,10 +199,17 @@ void EarlyTaxonomy::outputnode(std::string& nodename,std::string rankID,int orde
       rID << order;
     } else {
       rID << rankID << "." << order;
-      outfile << (get1->second).tax_lvl << "\t" << rID.str() << "\t" << (get1->second).real_name << "\t" << (get1->second).children.size() << "\t" << ecount << std::endl;
-
+      int prec = (int) log10(ecount);
+      if (prec > 2) {
+	prec+=1;
+      } else {
+	prec = 4;
+      }
+      
+      outfile << (get1->second).tax_lvl << "\t" << rID.str() << "\t" << (get1->second).real_name << "\t" << (get1->second).children.size() << "\t" << std::setprecision(prec) << ecount << std::endl;
+      
     }
-  
+    
     int kid_count = 1;
     for (auto get2 = (get1->second).children.begin();get2 != (get1->second).children.end();++get2) {
       std::string inname = get2->first;
@@ -222,7 +231,13 @@ void EarlyTaxonomy::output2(HLK& likelihoods,std::ofstream& outfile) {
     if (got==collapse_map.end()) {
       std::cerr << "Error finding " << old_fient << " in taxonomy, skipping\n";
     } else {
-      outfile << (got->second).id << "\t" << ecount << "\t" << (got->second).label << std::endl;
+      int prec = (int) log10(ecount);
+      if (prec > 2) {
+	prec+=1;
+      } else {
+	prec = 4;      
+      }  
+      outfile << (got->second).id << "\t" << std::setprecision(prec) << ecount << "\t" << (got->second).label << std::endl;
     }
   }
 }

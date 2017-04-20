@@ -194,12 +194,9 @@ void EarlyTaxonomy::outputnode(std::string& nodename,std::string rankID,int orde
     std::stringstream rID;
     double ecount = (get1->second).freq*nummapped;
     int prec = (int) log10(ecount);
-    if (prec > 4) {
-      prec+=1;
+    if (prec >= 3) {
+      prec+=2;
     } else {
-      if (prec==3) {
-	prec+=2;
-      }
       if (prec==2) {
 	prec+=3;
       }
@@ -240,19 +237,16 @@ void EarlyTaxonomy::output2(HLK& likelihoods,std::ofstream& outfile) {
       std::cerr << "Error finding " << old_fient << " in taxonomy, skipping\n";
     } else {
       int prec = (int) log10(ecount);
-      if (prec > 4) {
-	prec+=1;
+      if (prec >= 3) {
+	prec+=2;
       } else {
-	if (prec==3) {
-	  prec+=2;
-	}
 	if (prec==2) {
 	  prec+=3;
 	}
 	if (prec < 2) {
 	  prec = 4;
 	}
-      }  
+      }      
       outfile << (got->second).id << "\t" << std::setprecision(prec) << ecount << "\t" << (got->second).label << std::endl;
     }
   }

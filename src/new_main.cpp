@@ -225,7 +225,7 @@ int main(int argc, char** argv) {
 	for (int ii=0;ii<forfiles.size();++ii) {
 	  opt.files.push_back(forfiles[ii]);
 	  opt.file_direction.push_back(true);
-	  std::cerr << revfiles[ii] << " SIZE\n";
+	  //std::cerr << revfiles[ii] << "\n";
 	  if (ii < revfiles.size()) {
 	    opt.files.push_back(revfiles[ii]);
 	    opt.file_direction.push_back(false);

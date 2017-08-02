@@ -39,25 +39,8 @@ struct EarlyTaxonomy {
   void outputnode(std::string& nodename,std::string rankID,int order,std::ofstream& outfile,double& nummapped);
   void GetDelimeter(std::string& tline);
   std::vector<std::string> TaxName(std::vector<std::string>& taxa);
+  void readinfo(gzFile& readinfo_in,gzFile& readinfo_out,fastaIndex& findex,std::vector<std::string>& transfasta,gzFile& failfile_in);
 };
-
-// struct Taxonomy {
-  
-//   std::unordered_map<std::string, std::vector<std::string> > tax_map;
-//   std::string& output_format;
-//   std::vector<std::string>& taxonomy_files;
-//   
-//   HLK& likelihoods;
-//   fastaIndex& findex;
-
-//   Taxonomy(ProgramOptions& opt,HLK& likelihoods,fastaIndex& findex) : likelihoods(likelihoods), findex(findex), output_format(opt.format), taxonomy_files(opt.taxonomy_files) {
-//     createTaxMap(taxonomy_files,likelihoods,findex);
-//   }
-
-//   void createTaxMap(std::vector<std::string>& taxonomy_files,HLK& likelihoods,fastaIndex& findex);
- 
-
-// };
 
 typedef std::pair<std::string, m_node> m_entry;
 typedef std::pair< std::string, std::vector<std::string> > tax_entry;

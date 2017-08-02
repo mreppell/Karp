@@ -86,23 +86,6 @@ double getError(const char& qual,double mod,std::vector<int>& check) {
 }
 
 
-//ASCII modifier for different illumina qc score versions
-// double getMod(const double& illumina_version) {
-//   double mod = 33;
-//    if (illumina_version < 1.8) {
-//      mod = 1;
-//      if (illumina_version < 1.5) {
-//        if (illumina_version < 1.3) {
-// 	 std::cerr << "Illumina quality scores prior to 1.3 not supported, please convert before using this program\n";
-// 	   exit(1);
-//        } else {
-// 	 mod = 64; 
-//        }
-//      }
-//    }
-//    return mod;
-// }
-
 double calcLikelihood(std::string& cigar_string, const char* quals,const double& illumina_version) 
  {
 
@@ -186,6 +169,282 @@ FPTOut HLK::FPTfn(std::unordered_map<unsigned int,double>& current_freqs,bool ge
    }
    return em_return;
    
+}
+
+void HLK::singleReadInfo(int& thread,gzFile& catchfile,std::unordered_map<unsigned int, double>& current_freqs) {
+
+  std::stringstream catchinfo;
+  std::stringstream curr_sfile_ss;
+  curr_sfile_ss << out_base << "_thread" << thread << "_readinfo_singles.gz";
+  gzFile curr_sfile = gzopen(curr_sfile_ss.str().c_str(),"rb");
+  uint64_t altbuffsize = 1ULL<<20;
+  int still_reading = 0;
+  char *sbuffer = new char[altbuffsize];
+  int num_read = 0;
+  char *amp;
+  char *pipe; char *curr;;
+  std::string current = "";
+
+ while ((still_reading = gzread(curr_sfile,sbuffer,altbuffsize)) > 0) {
+    
+    std::string active = std::string(sbuffer);
+    std::string new_active = active.substr(0,still_reading);
+    active = new_active;
+    new_active.clear();
+    
+    size_t pipe = active.find('&');
+    size_t curr = 0;
+    while (pipe!=std::string::npos) { 
+      if (current=="") {
+	std::string full = active.substr(curr,(pipe-curr));
+	curr = pipe+1;
+	size_t amp = full.find('|');
+	if (amp!=std::string::npos) {
+	  std::string read = full.substr(0,amp);
+	  std::string taxa = full.substr(amp+1,full.size());
+	  unsigned int  tfind = std::strtoul(taxa.c_str(),NULL,0);
+	  auto get = current_freqs.find(tfind);
+	  if (get!=current_freqs.end()) {	  
+	    catchinfo << read << " 1," << taxa << "&";
+	  } else {
+	    catchinfo << read << " PF," << taxa << "&";
+	  }
+	} else {
+	  std::cerr << "Error with single file parsing, thread " << thread << ": " << full << std::endl;
+	}
+	pipe = active.find('&',curr);
+	++num_read;
+      } else {
+	std::string pre_full = active.substr(curr,(pipe-curr));
+	std::string full = current + pre_full;
+	curr = pipe+1;
+	size_t amp = full.find('|');
+	if (amp!=std::string::npos) {
+	  std::string read = full.substr(0,amp);
+	  std::string taxa = full.substr(amp+1,full.size());
+	  unsigned int tfind = std::strtoul(taxa.c_str(),NULL,0);
+	  auto get = current_freqs.find(tfind);
+	  if (get!=current_freqs.end()) {	  
+	    catchinfo << read << " 1," << taxa << "&";
+	  } else {
+	    catchinfo << read << " PF," << taxa << "&";
+	  }
+	} else {
+	  std::cerr << "Error with single file parsing, thread " << thread << ": " << full << std::endl;
+	}
+	pipe = active.find('&',curr);
+	++num_read;
+	current = "";
+      }
+    }
+    current = active.substr(curr,active.size()-curr);
+  }
+  if (current!="") {
+    size_t amp = current.find('|',0);    
+    if (amp!=std::string::npos) {
+      std::string read = current.substr(0,amp);
+      std::string taxa = current.substr(amp+1,current.size());
+      unsigned int tfind = std::strtoul(taxa.c_str(),NULL,0);
+      auto get = current_freqs.find(tfind);
+      if (get!=current_freqs.end()) {	  
+	catchinfo << read << " 1," << taxa << "&";
+      } else {
+	catchinfo << read << " PF," << taxa << "&";
+      }
+    } else {
+      std::cerr << "Error with single file parsing, thread " << thread << ": " << current << std::endl;
+    }
+  }
+
+  gzwrite(catchfile,catchinfo.str().c_str(),catchinfo.str().size());  
+  
+  gzclose(curr_sfile);
+  delete[] sbuffer;
+  
+}
+
+void HLK::intermedReadInfo(std::unordered_map<unsigned int, double>& current_freqs,std::stringstream& outfile,int& cthread,gzFile& catchfile) {
+  
+  std::stringstream catchinfo;
+  std::stringstream read_info;
+  read_info << out_base << "_thread" << cthread << "_readinfo.gz";
+  gzFile readfile = gzopen(read_info.str().c_str(),"rb");
+  gzFile infile = gzopen(outfile.str().c_str(),"rb");
+
+  std::vector<std::string> thread_reads;
+  uint64_t altbuffsize = 1ULL<<20;
+  int a_reading = 0;
+  char *firstbuffer = new char[altbuffsize];
+  int anum_read = 0;
+  char *spc; char *curr;
+  std::string acurrent = "";
+  
+  while ((a_reading = gzread(readfile,firstbuffer,altbuffsize)) > 0) {
+    
+    std::string active = std::string(firstbuffer);
+    std::string new_active = active.substr(0,a_reading);
+    active = new_active;
+    new_active.clear();
+    
+    size_t spc = active.find(' ');
+    size_t curr = 0;
+    while (spc!=std::string::npos) { 
+      if (acurrent=="") {
+	std::string cread = active.substr(curr,(spc-curr));
+	curr = spc+1;
+	thread_reads.push_back(cread);
+	spc = active.find(' ',curr);
+	++anum_read;
+      } else {
+	std::string pre_cread = active.substr(curr,(spc-curr));
+	std::string cread = acurrent + pre_cread;
+	curr = spc+1;
+	thread_reads.push_back(cread);
+	acurrent = "";
+	spc = active.find(' ',curr);
+	++anum_read;
+      }
+    }
+    acurrent = active.substr(curr,active.size()-curr);
+  }
+  if (acurrent!="") {
+    thread_reads.push_back(acurrent);
+  }
+
+  gzclose(readfile);
+  delete[] firstbuffer;
+
+  char *altbuffer = new char[altbuffsize];
+
+  int still_reading = 0;
+  int num_read = 0;
+  char *amp; char *pipe;char *at;char *inpipe;char *inat;char *inc1;
+  std::string current = "";
+    
+  while ((still_reading = gzread(infile,altbuffer,altbuffsize)) > 0) {
+
+    std::string active = std::string(altbuffer);
+    std::string new_active = active.substr(0,still_reading);
+    active = new_active;
+    new_active.clear();
+    
+    size_t amp = active.find('&');
+    size_t pipe = active.find('|');
+    size_t at = active.find('@');
+    size_t c1 = 0;
+    std::unordered_map<unsigned int, double> current_read;
+    double current_like = 0;
+    unsigned int current_id;
+
+    while (amp!=std::string::npos) {
+
+      if (current.compare("")!=0) {
+	size_t inpipe = current.find('|');
+	size_t inat = current.find('@');
+	size_t inc1 = 0;
+	  
+	while (inpipe!=std::string::npos || inat!=std::string::npos) {
+	  if (inpipe < inat && inpipe!=std::string::npos) {
+	    current_like = atof(current.substr(inc1,inpipe-inc1).c_str());
+	    inc1 = inpipe + 1;
+	    inpipe = current.find('|',inc1);
+	  }
+	  if (inat < inpipe && inat!=std::string::npos) {
+	    current_id = atoi(current.substr(inc1,inat-inc1).c_str());
+	    std::pair<unsigned int,double> entry(current_id,current_like);
+  	     
+	    current_read.insert(entry);
+	    inc1 = inat + 1;
+	    inat = current.find('@',inc1);
+	  }
+	}
+	std::string new_current = current.substr(inc1,current.size()-inc1);
+	//std::cout << "New Current: " << new_current << std::endl;
+	current = new_current;
+      }
+	  
+      while (pipe < amp || at < amp) {
+	  
+	if (pipe < at && pipe!=std::string::npos) {
+	  if (current.compare("")==0) {
+	    current_like = atof(active.substr(c1,pipe-c1).c_str());
+	    c1 = pipe + 1;
+	    pipe = active.find('|',c1);
+	  } else {
+	    std::string chelp = current + active.substr(c1,pipe-c1);
+	    //std::cout << "chelp: " << chelp << std::endl;
+	    current_like = atof(chelp.c_str());
+	    c1 = pipe + 1;
+	    pipe = active.find('|',c1);
+	    current = "";
+	  }
+	}
+	if (at < pipe && at!=std::string::npos) {
+	  if (current.compare("")==0) {
+	    current_id = atoi(active.substr(c1,at-c1).c_str());
+	    std::pair<unsigned int, double> entry(current_id,current_like);
+	    //std::cout << "Entry1: " << current_id << " " << current_like << std::endl;
+	    current_read.insert(entry);
+	    c1 = at + 1;
+	    at = active.find('@',c1);
+	  } else {
+	    std::string chelp = current + active.substr(c1,at-c1);
+	    current_id = atoi(chelp.c_str());
+	    std::pair<unsigned int, double> entry(current_id,current_like);
+	    //std::cout << "Entry2: " << current_id << " " << current_like << std::endl;
+	    current_read.insert(entry);
+	    c1 = at + 1;
+	    at = active.find('@',c1);
+	    current = "";
+	  }
+	}
+      }
+       
+      double marginal = base_marginal;
+      
+     for (auto it=current_read.begin();it!=current_read.end();++it) {
+	auto get = current_freqs.find(it->first);
+	if (get!=current_freqs.end()) {
+	  double val = exp(it->second)*(get->second);
+	  marginal = marginal + val - exp(min_logl)*(get->second);
+	}
+      }
+
+      catchinfo << thread_reads[num_read];
+      bool see_something = false;
+      for (auto it=current_read.begin();it!=current_read.end();++it) {
+	auto get = current_freqs.find(it->first);
+	if (get!=current_freqs.end()) {
+	  see_something = true;
+	  double val = exp(it->second)*(get->second);
+	  double rval = val/marginal;
+	  std::cout.precision(3);
+	  catchinfo << " " << rval << "," << get->first;
+	}
+      }
+      if (see_something==false) {
+	catchinfo << " EM,None";
+      }
+      catchinfo << '&'; 
+
+      current_read.clear();
+      c1 = amp + 1;
+      amp = active.find('&',c1);
+      num_read++;
+    }
+    if (current.compare("")==0) {
+      current = active.substr(c1,active.size()-c1);
+    } else {
+      std::string new_current = current + active.substr(0,active.size());
+      current = new_current;
+    }
+
+  }
+  gzwrite(catchfile,catchinfo.str().c_str(),catchinfo.str().size());
+
+  gzclose(infile);
+  delete[] altbuffer;
+    
 }
 
 void LikelihoodProcessor::ProcessLikes(std::unordered_map<unsigned int,double>& current_freqs,double& frequency_cutoff) {
@@ -473,14 +732,11 @@ void HLK::estimate_haplotype_frequencies() {
   //   std::cout << "(" << it->first << "):" << it->second << " ";
   // }
   // std::cout << std::endl;
-  
-  
-
+    
   frequency_cutoff_iteration = minimum_frequency_cutoff/50.0;
   current_frequency_cutoff = frequency_cutoff_iteration;
   
   SquaremOutput em_return = SquareEM(current_freqs);
-
 
   if (em_return.convergence==true) {
     std::cerr << "EM converged in " << em_return.pfevals << " with final log(like) = " << em_return.final_logl << std::endl;
@@ -500,20 +756,44 @@ void HLK::estimate_haplotype_frequencies() {
   }
   nummapped-=num_single_fail;
 
-   for (int ii=0;ii<threads;++ii) {
-     std::stringstream outfilename;
-     std::stringstream singleoutfile;
-     outfilename << out_base << "_thread" << ii << ".lks";
-     singleoutfile << out_base << "_thread" << ii << "_singles.lks";
-     if ( remove(outfilename.str().c_str()) != 0) {
-       perror( "Error deleting file");
-     } 
-     if ( remove(singleoutfile.str().c_str()) != 0) {
-       perror( "Error deleting file");
-     } 
+  std::stringstream readinfo_catch_all;
+  readinfo_catch_all << out_base << "_readinfo_intermediate.txt.gz";
+  gzFile catchfile = gzopen(readinfo_catch_all.str().c_str(),"wb");
 
-   }
-  
+  for (int ii=0;ii<threads;++ii) {
+    std::stringstream outfilename;
+    std::stringstream singleoutfile;
+    outfilename << out_base << "_thread" << ii << ".lks";
+    singleoutfile << out_base << "_thread" << ii << "_singles.lks";
+    if (readinfo) {
+      intermedReadInfo(freqs,outfilename,ii,catchfile);
+      singleReadInfo(ii,catchfile,freqs);
+    }
+    std::stringstream ri_file1;
+    std::stringstream ri_file2;
+    ri_file1 << out_base << "_thread" << ii << "_readinfo.gz";
+    ri_file2 << out_base << "_thread" << ii << "_readinfo_singles.gz";
+    if ( remove(ri_file1.str().c_str()) != 0) {
+      perror("Error deleting readinfo file");
+    }
+    if ( remove(ri_file2.str().c_str()) != 0) {
+      perror("Error deleting readinfo file");
+    }
+    if ( remove(outfilename.str().c_str()) != 0) {
+      perror( "Error deleting file");
+    } 
+    if ( remove(singleoutfile.str().c_str()) != 0) {
+      perror( "Error deleting file");
+    } 
+
+  }
+  gzclose(catchfile);
+  if (!readinfo) {
+    if ( remove(readinfo_catch_all.str().c_str()) != 0) {
+      perror ("Error deleting empty readinfo intermediate file");
+    }
+  }
+   
   std::cerr << "After EM " << num_single_fail << " reads uniquely mapped to a reference taxa with a frequency below the minimum threshold and were not assigned\n" << nummapped << " reads remain and were assigned a taxonomic label" << std::endl;
   logfile_track << "After EM " << num_single_fail << " reads uniquely mapped to a reference taxa with a frequency below the minimum threshold and were not assigned\n" << nummapped << " reads remain and were assigned a taxonomic label" << std::endl;
 }
@@ -570,10 +850,10 @@ void  cutoff_low_frequencies(std::unordered_map<unsigned int,double>& f_old,std:
   
   //std::cerr << "From " << f_old.size() << " -> "<< f_new.size() << " Cutoff " << min_freq << std::endl;
 }
+/////////Idea is to create modified version of function below, call on final results frequencies with read names
+
 
 void GetAbundance(LikelihoodProcessor* LP,int thread_num,std::unordered_map<unsigned int,double> current_freqs,double base_marginal,std::string out_base,double min_logl) {
-
-//void GetAbundance(int thread_num,std::unordered_map<unsigned int,double> current_freqs,double base_marginal,std::string out_base,double min_logl) {
 
   double log_sum_marginal = 0;
   std::stringstream outfilename;

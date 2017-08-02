@@ -113,6 +113,7 @@ public:
   double min_logl;
   bool collapse;
   bool fail;
+  bool readinfo;
   bool likeplot;
  
   std::vector<std::pair<const char*, int>> seqs;
@@ -122,7 +123,7 @@ public:
 
   //std::vector<int> counts;
 
-  void WriteInt(std::vector<std::unordered_map<double,std::vector<unsigned int> > >& clikes,gzFile& full_outfile,gzFile& single_outfile,std::stringstream& logfile_track,LKFilter& like_filter,std::unordered_map<unsigned int, bool>& c_z_support,gzFile& likefail,std::unordered_map<int, std::string>& read_order,gzFile& maxlikes);
+  void WriteInt(std::vector<std::unordered_map<double,std::vector<unsigned int> > >& clikes,gzFile& full_outfile,gzFile& single_outfile,std::stringstream& logfile_track,LKFilter& like_filter,std::unordered_map<unsigned int, bool>& c_z_support,gzFile& likefail,std::unordered_map<int, std::string>& read_order,gzFile& maxlikes,gzFile& readtracks,gzFile& singletracks);
   double Alignment(const char* &s1,const char* &q1,int& ient,const uint64_t& linelength, bool& paired,rt_entry& map_entry,std::string& seqstring);
   double Alignment(const char* &s1,const char* &s2,const char* &q1, const char* &q2,int& ient, const uint64_t& linelength, bool& paired,rt_entry& map_entry,std::string& seqstring);
   std::string getSeqString(int& ient); 

@@ -38,6 +38,7 @@ struct ProgramOptions {
   bool fail;
   bool likeplot;
   std::string version;
+  bool readinfo;
 
 ProgramOptions() :
   min_logl(-150),

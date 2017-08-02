@@ -115,8 +115,8 @@ struct HLK {
   double nummapped;
   double num_single;
   double base_marginal;
+  bool readinfo;
  
-  
   double minimum_frequency_cutoff;
   double current_frequency_cutoff;
   double frequency_cutoff_iteration;
@@ -128,17 +128,19 @@ struct HLK {
   double max_em_iterations;
   SquaremControl EMcontrol;
  
-  HLK(fastaIndex& findex,ProgramOptions& opt,std::stringstream& logfile_track) : convergence_threshold(opt.em_converge), EMcontrol(opt), min_logl(opt.min_logl), minimum_frequency_cutoff(opt.minimum_frequency_cutoff), out_base(opt.out), logfile_track(logfile_track), illumina_version(opt.illumina_version), threads(opt.threads), num_single(0), max_em_iterations(opt.max_em_iterations), nummapped(0), base_marginal(0), num_single_fail(0) {}
+  HLK(fastaIndex& findex,ProgramOptions& opt,std::stringstream& logfile_track) : convergence_threshold(opt.em_converge), EMcontrol(opt), min_logl(opt.min_logl), minimum_frequency_cutoff(opt.minimum_frequency_cutoff), out_base(opt.out), logfile_track(logfile_track), illumina_version(opt.illumina_version), threads(opt.threads), num_single(0), max_em_iterations(opt.max_em_iterations), nummapped(0), readinfo(opt.readinfo), base_marginal(0), num_single_fail(0) {}
   
   bool StreamReads(std::unordered_map<unsigned int,double>& current_freqs,double& iteration,double& current_frequency_cutoff,double& frequency_cutoff_iteration);
   //std::unordered_map<unsigned int,double> GetPriors(std::stringstream& logfile_track);
 void GetPriors(std::stringstream& logfile_track);
     
+  void intermedReadInfo(std::unordered_map<unsigned int, double>& freqs,std::stringstream& outfile,int& cthread,gzFile& catchfile);
   void estimate_haplotype_frequencies();
   double initializeFreqs(std::unordered_map<unsigned int,double>& freqs,std::unordered_map<unsigned int,bool>& zero_support,std::unordered_map<unsigned int,double>& prior_freqs,double& nummapped);  
   //bool UpdateFrequencies(std::unordered_map<unsigned int,double>& current_freqs, std::vector< std::unordered_map<unsigned int,double > >& elks,double& forgetfactor,double& current_frequency_cutoff);
   SquaremOutput SquareEM(std::unordered_map<unsigned int, double>& current_freqs);
   FPTOut FPTfn(std::unordered_map<unsigned int,double>& current_freqs,bool get_to_min);
+  void singleReadInfo(int& thread,gzFile& catchfile,std::unordered_map<unsigned int,double>& current_freqs);
 
 };
 

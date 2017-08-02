@@ -134,7 +134,7 @@ uint32_t ProcessReads(KmerIndex& index, const ProgramOptions& opt, MinCollector&
       pre_full_fail_file << opt.out << ".failed_reads.gz";
       gzFile full_fail_file = gzopen(pre_full_fail_file.str().c_str(),"wb");
       
-      std::string row1("Psuedomapping_Fails:");
+      std::string row1("Pseudomapping_Fails:");
       std::string row2("\nLikelihood_Filter_Fails:");
 
       gzwrite(full_fail_file,row1.c_str(),row1.size());
@@ -183,6 +183,8 @@ uint32_t ProcessReads(KmerIndex& index, const ProgramOptions& opt, MinCollector&
 	} 
       }
       delete[] failbuff;
+      std::string endline = "\n";
+      gzwrite(full_fail_file,endline.c_str(),endline.size());
       gzclose(full_fail_file);
   } else {
       for (int ii=0;ii<opt.threads;++ii) {
@@ -307,7 +309,7 @@ void MasterProcessor::processReads() {
 }
 
 ReadProcessor::ReadProcessor(const KmerIndex& index, const ProgramOptions& opt, const MinCollector& tc, MasterProcessor& mp, fastaIndex& findex,LKFilter& like_filter,std::stringstream& logfile_track, int thread_num, EarlyTaxonomy& earlytax,bool collapse) :
-  paired(opt.single_end), tc(tc), index(index), mp(mp), earlytax(earlytax), findex(findex), like_filter(like_filter), illumina_version(opt.illumina_version), fail(opt.fail), logfile_track(logfile_track), thread_num(thread_num),min_logl(opt.min_logl), out_base(opt.out), collapse(collapse), likeplot(opt.likeplot) {
+  paired(opt.single_end), tc(tc), index(index), mp(mp), earlytax(earlytax), findex(findex), like_filter(like_filter), illumina_version(opt.illumina_version), fail(opt.fail), logfile_track(logfile_track), thread_num(thread_num),min_logl(opt.min_logl), readinfo(opt.readinfo), out_base(opt.out), collapse(collapse), likeplot(opt.likeplot) {
   //initialize buffer
 
   bufsize = 1ULL<<22;
@@ -351,6 +353,14 @@ void ReadProcessor::operator()() {
   max_likes << out_base << "_thread" << thread_num << "_maxlikes.gz";
   gzFile maxlikes = gzopen(max_likes.str().c_str(),"wb");
 
+  std::stringstream read_tracks;
+  read_tracks << out_base << "_thread" << thread_num << "_readinfo.gz";
+  gzFile readtracks = gzopen(read_tracks.str().c_str(),"wb");
+
+  std::stringstream single_tracks;
+  single_tracks << out_base << "_thread" << thread_num << "_readinfo_singles.gz";
+  gzFile singletracks = gzopen(single_tracks.str().c_str(),"wb");
+
   if (!full_outfile || !single_outfile) {
     std::cerr << "Error, unable to open intermediate output files for thread " << thread_num << std::endl;
     exit(1);
@@ -376,7 +386,7 @@ void ReadProcessor::operator()() {
  
       thread_output thread_out = processBuffer();
 
-      WriteInt(thread_out.clikes,full_outfile,single_outfile,logfile_track,like_filter,thread_out.c_z_support,likefail,thread_out.read_order,maxlikes);
+      WriteInt(thread_out.clikes,full_outfile,single_outfile,logfile_track,like_filter,thread_out.c_z_support,likefail,thread_out.read_order,maxlikes,readtracks,singletracks);
       for (auto it=thread_out.c_z_support.begin();it!=thread_out.c_z_support.end();++it) {
 	auto get = mp.zsupport[thread_num].find(it->first);
 	if (get==mp.zsupport[thread_num].end()) {
@@ -398,6 +408,8 @@ void ReadProcessor::operator()() {
     }    
     clear();    
   }
+  gzclose(singletracks);
+  gzclose(readtracks);
   gzclose(full_outfile);
   gzclose(single_outfile);
   gzclose(mapfail);
@@ -496,7 +508,7 @@ double ReadProcessor::Alignment(const char* &s1,const char* &q1,int& ient,const 
 
 }
 
-void ReadProcessor::WriteInt(std::vector<std::unordered_map<double, std::vector<unsigned int> > >& clikes,gzFile& full_outfile,gzFile& single_outfile,std::stringstream& logfile_track,LKFilter& like_filter,std::unordered_map<unsigned int, bool>& c_z_support,gzFile& likefail,std::unordered_map<int, std::string>& read_order,gzFile& maxlikes) {
+void ReadProcessor::WriteInt(std::vector<std::unordered_map<double, std::vector<unsigned int> > >& clikes,gzFile& full_outfile,gzFile& single_outfile,std::stringstream& logfile_track,LKFilter& like_filter,std::unordered_map<unsigned int, bool>& c_z_support,gzFile& likefail,std::unordered_map<int, std::string>& read_order,gzFile& maxlikes,gzFile& readtracks,gzFile& singletracks) {
 
   double thresh_val = like_filter.mean + like_filter.sd*like_filter.threshold;
 
@@ -505,11 +517,15 @@ void ReadProcessor::WriteInt(std::vector<std::unordered_map<double, std::vector<
   std::stringstream single_ss;
   std::stringstream likefail_ss;
   std::stringstream maxlikes_ss;
+  std::stringstream readtracks_ss;
+  std::stringstream singletracks_ss;
 
   if (like_filter.use==true) {
 
     for (int i=0;i<clikes.size();++i) {
     
+      bool infail = false;
+      bool rec_single = false;
       double max_val = 9;
       for (auto get=clikes[i].begin();get!=clikes[i].end();++get) {
 	if (max_val==9) {
@@ -546,11 +562,17 @@ void ReadProcessor::WriteInt(std::vector<std::unordered_map<double, std::vector<
 		std::cerr << "Error finding " << get->second[j] << " in zero support" << std::endl;
 	      } else {
 		set->second = true;
-	  
 	      }
 	    }
 	    full_ss << "&";
 	  } else {
+	    rec_single = true;
+	    if (readinfo) {
+	      auto read_name = read_order.find(i);
+	      if (read_name!=read_order.end()) {
+		singletracks_ss << read_name->second << "|" << get->second[0] << "&";
+	      }
+	    }
 	    single_ss << get->second[0] << "&";
 	    auto set = c_z_support.find(get->second[0]);
 	    if (set==c_z_support.end()) {
@@ -561,14 +583,32 @@ void ReadProcessor::WriteInt(std::vector<std::unordered_map<double, std::vector<
 	  }
 	}
       } else {
-	if (fail) {
-	  auto read_name = read_order.find(i);
-	  if (read_name!=read_order.end()) {
-	    likefail_ss << read_name->second << " ";
-	  }
-	}	
+	infail = true;
 	++removed;
       }
+      if (fail) {
+	if (readinfo && rec_single==false) {
+	  auto read_name = read_order.find(i);
+	  if (read_name!=read_order.end()) {
+	    if (infail==false) {
+	      readtracks_ss << read_name->second << " ";
+	    } else {
+	      likefail_ss << read_name->second << " ";
+	    }
+	  } else {
+	    std::cerr << "Error with finding all reads in read order, reads lists may be shifted and inaccurate. Read " << i << std::endl;
+	  }
+	} else {
+	  if (infail==true) {
+	    auto read_name = read_order.find(i);
+	    if (read_name!=read_order.end()) {
+	      likefail_ss << read_name->second << " ";
+	    } else {
+	      std::cerr << "Error with finding all reads in read order, failure list may be shifted and inaccurate. Read " << i << std::endl;
+	    }
+	  }
+	}
+      }	
     }
  
     like_filter.number_removed+=removed;  
@@ -576,6 +616,10 @@ void ReadProcessor::WriteInt(std::vector<std::unordered_map<double, std::vector<
     gzwrite(single_outfile,single_ss.str().c_str(),single_ss.str().size());
     if (fail) {
       gzwrite(likefail,likefail_ss.str().c_str(),likefail_ss.str().size());
+    }
+    if (readinfo) {
+      gzwrite(readtracks,readtracks_ss.str().c_str(),readtracks_ss.str().size());
+      gzwrite(singletracks,singletracks_ss.str().c_str(),singletracks_ss.str().size());
     }
     if (likeplot) {
       gzwrite(maxlikes,maxlikes_ss.str().c_str(),maxlikes_ss.str().size());
@@ -633,7 +677,17 @@ void ReadProcessor::WriteInt(std::vector<std::unordered_map<double, std::vector<
 	}
       }
       maxlikes_ss << max_val << " ";
-     
+      if (readinfo) {
+	auto read_name = read_order.find(i);
+	if (read_name!=read_order.end()) {
+	  readtracks_ss << read_name->second << " ";
+	} else {
+	  std::cerr << "Error with finding all reads in read order, failure list may be shifted and inaccurate. Read " << i << std::endl;
+	}
+      }
+    }
+    if (readinfo) {
+      gzwrite(readtracks,readtracks_ss.str().c_str(),readtracks_ss.str().size());
     }
     gzwrite(full_outfile,full_ss.str().c_str(),full_ss.str().size());
     gzwrite(single_outfile,single_ss.str().c_str(),single_ss.str().size());
@@ -703,7 +757,7 @@ thread_output ReadProcessor::processBuffer() {
 	int ret = tc.altIntersectKmers(v1,v2,!paired,u);
 	if (u.empty()) {
 	  if (fail) {
-	    mapfail_ss << std::string(names[i].first,strlen(names[i].first)) << ",";
+	    mapfail_ss << std::string(names[i].first,strlen(names[i].first)) << " ";
 	  }
 	  continue;
 	} else {
@@ -989,7 +1043,7 @@ thread_output ReadProcessor::processBuffer() {
       //////////////////////////////
     }
     
-    if (fail) {
+    if (fail || readinfo) {
       std::pair<int, std::string> trackorder(current_mapped,std::string(names[i].first,strlen(names[i].first)));
       read_order.insert(trackorder);
       current_mapped++;

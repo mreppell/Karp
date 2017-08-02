@@ -155,7 +155,9 @@ int main(int argc, char** argv) {
     cmd.add(harpFilterThresh);
     TCLAP::SwitchArg likePlot("","max_like_out","Output file containing maximum likelihood value for each read, for diagnosing whether to use likelihood filter option",false);
     cmd.add(likePlot);
-
+    TCLAP::SwitchArg perReadOut("","readinfo","Output file containing posterior estimates of contributing references for each read that is classified.",false);
+    cmd.add(perReadOut);
+    
     cmd.parse(argc,argv);
 
     ProgramOptions opt;
@@ -177,12 +179,14 @@ int main(int argc, char** argv) {
     opt.collapse = collapseTax.getValue();
     opt.fail = readFail.getValue();
     opt.likeplot= likePlot.getValue();
+    opt.readinfo = perReadOut.getValue();
     //      opt.it_skip = initSkip.getValue();
     std::string all_samples = tabSamples.getValue();
     
     std::string version = "release v1.0";
     opt.version = version;
-    
+    bool delete_fail = false;
+
     std::string temp_tol = EMconverg.getValue();
     if (temp_tol.compare("1e-1")==0) {
      	opt.em_converge = 0.000000000001;
@@ -190,6 +194,10 @@ int main(int argc, char** argv) {
       opt.em_converge = atof(temp_tol.c_str());
     }
 
+    if (opt.readinfo==true) {
+      opt.fail=true;
+      delete_fail = true;
+    }
 
     std::string tax_files = taxFile.getValue();
     std::string rev_fastqs = revQs.getValue();
@@ -318,7 +326,6 @@ int main(int argc, char** argv) {
       EarlyTaxonomy earlytax;
       earlytax.BuildEarlyTaxonomy(opt.taxonomy_files,findex);
 
-
 	std::chrono::system_clock::time_point tp;
 	tp = std::chrono::system_clock::now();
       
@@ -341,8 +348,7 @@ int main(int argc, char** argv) {
 	auto diff = std::chrono::system_clock::now() - tp;
 	tp = std::chrono::system_clock::now();
 	std::cout << "Pseudomapping/aligning:  " << std::chrono::duration_cast<chrono::seconds>(diff).count() << " sec" << std::endl;
- 
-	likelihoods.estimate_haplotype_frequencies();
+ 	likelihoods.estimate_haplotype_frequencies();
 
 	diff = std::chrono::system_clock::now() - tp;
 	tp = std::chrono::system_clock::now();     
@@ -352,6 +358,43 @@ int main(int argc, char** argv) {
 	std::ofstream outfile;
 	outfile.open(outer.c_str(), std::ios::out);
 	if (!outfile.is_open()) {std::cerr << "Unable to open output file\n";exit(1);}
+
+	if (opt.readinfo) {
+	  std::stringstream read_in;
+	  read_in << opt.out << "_readinfo_intermediate.txt.gz";
+	  std::stringstream read_out;
+	  read_out << opt.out << "_readinfo.txt.gz";
+	  std::stringstream fail_in;
+	  fail_in << opt.out << ".failed_reads.gz";
+	  //std::cout << fail_in.str() << std::endl;
+	  gzFile failfile_in = gzopen(fail_in.str().c_str(),"rb");
+	  if (! failfile_in) {
+	    perror("Unable to open fail file for final readinfo build\n");
+	    exit(101);
+	  }
+	  gzFile readinfo_in = gzopen(read_in.str().c_str(),"rb");
+	  if (!readinfo_in) {
+	      perror("Unable to open intermediate readinfo file\n");
+	      exit(101);
+	  }
+	  gzFile readinfo_out = gzopen(read_out.str().c_str(),"wb");
+	    if (!readinfo_out) {
+	      std::cerr << "Unable to open final readinfo output file\n";
+	      exit(101);
+	    }
+	  earlytax.readinfo(readinfo_in,readinfo_out,findex,opt.transfasta,failfile_in);
+	  gzclose(failfile_in);
+	  gzclose(readinfo_in);
+	  gzclose(readinfo_out);
+	  if ( remove(read_in.str().c_str()) != 0) {
+	    perror("Error deleting intermediate readinfo file\n");
+	  }
+	    if (delete_fail==true) {
+	      if ( remove(fail_in.str().c_str()) !=0) {
+	      perror("Error removing mapfail file\n");
+	    }
+	   }
+	}
 	
 	if (opt.collapse==true) {
 	  earlytax.output(likelihoods,outfile);

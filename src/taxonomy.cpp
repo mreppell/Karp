@@ -24,6 +24,371 @@ std::string  gettlev(int& x) {
   exit(1);
 }
 
+void EarlyTaxonomy::readinfo(gzFile& rinfo_file,gzFile& rinfo_out,fastaIndex& findex,std::vector<std::string>& transfasta,gzFile& failfile_in) {
+ 
+
+  std::stringstream rinfo_ss;
+  //rinfo_ss.precision(3);
+  rinfo_ss << "#Read Information\n#MapFail = Reads that failed to pseudoalign\n#LikeFail = Reads that failed to pass likelihood filter\n#EM_Unmap = Reads that uniquely pseudoaligned to reference absent from pool after EM convergence\n#Even_PostEM = Reads that offer no evidence for particular references after EM algorithm, and are distributed according to posterior probabilities\n#Using reference IDs from:\n";
+  for (int ii=0;ii<transfasta.size();++ii) {
+    rinfo_ss << "\t" << transfasta[ii] << "\n";
+  }
+  rinfo_ss << "#Format Read_Name Probability:ReferenceID\n"; 
+  uint64_t buffsize = 1ULL<<20;
+  int still_reading = 0;
+  char *buff = new char[buffsize];
+  int num_read = 0;
+  char *amp;
+  char *com;
+  char *spc;
+  char *incurr;
+  std::string current = "";
+
+  std::unordered_map<int,std::string> rv_names;
+  for (auto it=findex.ref_names.begin();it!=findex.ref_names.end();++it) {
+    std::string v1 = it->first;
+    int v2 = it->second;
+    std::pair<int,std::string> entry(v2,v1);
+    rv_names.insert(entry);
+  }
+
+  while ((still_reading = gzread(rinfo_file,buff,buffsize))!=0) {
+    
+    std::string active = std::string(buff);
+    std::string new_active = active.substr(0,still_reading);
+    active = new_active;
+    new_active.clear();
+    
+    size_t amp = active.find('&');
+    size_t curr = 0;
+    while (amp!=std::string::npos) {
+      if (current=="") {
+    	std::string full = active.substr(curr,(amp-curr));
+    	curr = amp+1;
+    	size_t incurr = full.find(' ');
+    	std::string rname = full.substr(0,incurr);
+  	rinfo_ss << rname;
+  	std::vector<double> percs;
+  	std::vector<std::string> na;
+  	size_t spc = full.find(' ',incurr+1);
+    	while (spc!=std::string::npos) {
+  	  std::string part = full.substr(incurr+1,(spc-(incurr+1)));
+    	  size_t com = part.find(',');	  
+    	  std::string perc = part.substr(0,com);
+  	  if (perc!="PF" && perc!="EM") {
+  	    std::string ptax = part.substr(com+1,part.size()-(com+1));
+  	    int t_ptax = atoi(ptax.c_str());
+  	    auto get = rv_names.find(t_ptax);
+  	    if (get!=rv_names.end()) {
+  	      percs.push_back(atof(perc.c_str()));
+  	      na.push_back(get->second);
+  	    } else {
+  	      std::cerr << "Error finding " << t_ptax << " in fastaIndex for readinfo\n";
+  	    }
+  	  } else {
+  	    std::cerr << "Finding PF/EM for multimapped read: " << rname << std::endl;
+  	  }
+    	  incurr = spc;
+  	  spc = full.find(' ',incurr+1);
+    	}
+  	std::string opart = full.substr(incurr+1,full.size()-(incurr+1));
+  	size_t com = opart.find(',');	  
+  	std::string perc = opart.substr(0,com);
+  	if (perc!="PF" && perc!="EM") {
+  	  std::string ptax = opart.substr(com+1,opart.size()-(com+1));
+  	  int t_ptax = atoi(ptax.c_str());
+  	  auto get = rv_names.find(t_ptax);
+  	  if (get!=rv_names.end()) {
+  	    percs.push_back(atof(perc.c_str()));
+  	    na.push_back(get->second);
+  	  } else {
+  	    std::cerr << "Error finding " << t_ptax << " in fastaIndex for readinfo\n";
+  	  }
+  	  if (percs.size()==1) {
+  	    rinfo_ss << " " << percs[0] << ":" << na[0] << "\n";
+  	  } else {
+  	    double max = 0;
+	    std::string max_id = "";
+  	    for (int ii=0;ii<percs.size();++ii) {
+  	      if (percs[ii] > max) {
+  		max = percs[ii];
+		max_id = na[ii];
+  	      }
+  	    }
+  	    if (max >= 0.9995) {
+	      rinfo_ss << " 1:" << max_id << " <5e-4 total prob:";
+	      for (int ii=0;ii<na.size();++ii) {
+		if (na[ii]!=max_id) {
+		  rinfo_ss << " " << na[ii];
+		}
+	      }
+	      rinfo_ss << "\n";
+	    } else {
+	      std::sort (percs.begin(),percs.end());
+	      std::reverse (percs.begin(),percs.end());
+	      for (int ii=0;ii<percs.size();++ii) {
+		rinfo_ss << " " << percs[ii] << ":" << na[ii];
+	      }
+	      rinfo_ss << "\n";
+	    }
+  	  }
+  	} else {
+  	  if (perc=="PF") {
+  	    rinfo_ss << " EM_Unmap\n";
+  	  }
+  	  if (perc=="EM") {
+  	    rinfo_ss << " Even_PostEM\n";
+  	  }
+  	}
+  	amp = active.find('&',curr+1);
+      } else {
+    	std::string prefull = active.substr(curr,(amp-curr));
+    	std::string full = current + prefull;
+    	current = "";
+    	curr = amp+1;
+    	size_t incurr = full.find(' ');
+    	std::string rname = full.substr(0,incurr);
+  	rinfo_ss << rname;
+  	std::vector<double> percs;
+  	std::vector<std::string> na;
+  	size_t spc = full.find(' ',incurr+1);
+    	while (spc!=std::string::npos) {
+  	  std::string part = full.substr(incurr+1,(spc-(incurr+1)));
+    	  size_t com = part.find(',');	  
+    	  std::string perc = part.substr(0,com);
+  	  if (perc!="PF" && perc!="EM") {
+  	    std::string ptax = part.substr(com+1,part.size()-(com+1));
+  	    int t_ptax = atoi(ptax.c_str());
+  	    auto get = rv_names.find(t_ptax);
+  	    if (get!=rv_names.end()) {
+  	      percs.push_back(atof(perc.c_str()));
+  	      na.push_back(get->second);
+  	    } else {
+  	      std::cerr << "Error finding " << t_ptax << " in fastaIndex for readinfo\n";
+  	    }
+  	  } else {
+  	    std::cerr << "Finding PF/EM for multimapped read: " << rname << std::endl;
+  	  }
+    	  incurr = spc;
+  	  spc = full.find(' ',incurr+1);
+    	}
+  	std::string opart = full.substr(incurr+1,full.size()-(incurr+1));
+  	size_t com = opart.find(',');	  
+  	std::string perc = opart.substr(0,com);
+  	if (perc!="PF" && perc!="EM") {
+  	  std::string ptax = opart.substr(com+1,opart.size()-(com+1));
+  	  int t_ptax = atoi(ptax.c_str());
+  	  auto get = rv_names.find(t_ptax);
+  	  if (get!=rv_names.end()) {
+  	    percs.push_back(atof(perc.c_str()));
+  	    na.push_back(get->second);
+  	  } else {
+  	    std::cerr << "Error finding " << t_ptax << " in fastaIndex for readinfo\n";
+  	  }
+  	  if (percs.size()==1) {
+  	    rinfo_ss << " " << percs[0] << ":" << na[0] << "\n";
+  	  } else {
+  	    double max = 0;
+	    std::string max_id = "";
+  	    for (int ii=0;ii<percs.size();++ii) {
+  	      if (percs[ii] > max) {
+  		max = percs[ii];
+		max_id = na[ii];
+  	      }
+  	    }
+  	    if (max >= 0.9995) {
+	      rinfo_ss << " 1:" << max_id << " <5e-4 total prob:";
+	      for (int ii=0;ii<na.size();++ii) {
+		if (na[ii]!=max_id) {
+		  rinfo_ss << " " << na[ii];
+		}
+	      }
+	      rinfo_ss << "\n";
+	    } else {
+	      std::sort (percs.begin(),percs.end());
+	      std::reverse (percs.begin(),percs.end());
+	      for (int ii=0;ii<percs.size();++ii) {
+		rinfo_ss << " " << percs[ii] << ":" << na[ii];
+	      }
+	      rinfo_ss << "\n";
+	    }
+  	  }
+  	} else {
+  	  if (perc=="PF") {
+  	    rinfo_ss << " EM_Unmap\n";
+  	  }
+  	  if (perc=="EM") {
+  	    rinfo_ss << " Even_PostEM\n";
+  	  }
+  	}
+  	amp = active.find('&',curr+1);
+      }
+    }
+    if (current=="") {
+      current = active.substr(curr,active.size()-curr);
+    } else {
+      std::string precurrent = active.substr(curr,active.size()-curr);
+      current = current + precurrent;
+    }
+  }
+  if (current!="") {    
+    size_t incurr = current.find(' ');
+    std::string rname = current.substr(0,incurr);
+    rinfo_ss << rname;
+    std::vector<double> percs;
+    std::vector<std::string> na;
+    size_t spc = current.find(' ',incurr+1);
+    while (spc!=std::string::npos) {
+      std::string part = current.substr(incurr+1,(spc-(incurr+1)));
+      size_t com = part.find(',');	  
+      std::string perc = part.substr(0,com);
+      if (perc!="PF" && perc!="EM") {
+	std::string ptax = part.substr(com+1,part.size()-(com+1));
+	int t_ptax = atoi(ptax.c_str());
+	auto get = rv_names.find(t_ptax);
+	if (get!=rv_names.end()) {
+	  percs.push_back(atof(perc.c_str()));
+	  na.push_back(get->second);
+	} else {
+	  std::cerr << "Error finding " << t_ptax << " in fastaIndex for readinfo\n";
+	}
+      } else {
+	std::cerr << "Finding PF/EM for multimapped read: " << rname << std::endl;
+      }
+      incurr = spc;
+      spc = current.find(' ',incurr+1);
+    }
+  
+    std::string opart = current.substr(incurr,current.size()-incurr);
+    size_t com = opart.find(',');	  
+    std::string perc = opart.substr(0,com);
+    std::string ptax = opart.substr(com+1,opart.size()-(com+1));
+    if (perc!="PF" && perc!="EM") {
+      std::string ptax = opart.substr(com+1,opart.size()-(com+1));
+      int t_ptax = atoi(ptax.c_str());
+      auto get = rv_names.find(t_ptax);
+      if (get!=rv_names.end()) {
+	percs.push_back(atof(perc.c_str()));
+	na.push_back(get->second);
+      } else {
+	std::cerr << "Error finding " << t_ptax << " in fastaIndex for readinfo\n";
+      }
+      if (percs.size()==1) {
+	rinfo_ss << " " << percs[0] << ":" << na[0] << "\n";
+      } else {
+	double max = 0;
+	std::string max_id = "";
+	for (int ii=0;ii<percs.size();++ii) {
+	  if (percs[ii] > max) {
+	    max = percs[ii];
+	    max_id = na[ii];
+	  }
+	}
+	if (max >= 0.9995) {
+	  rinfo_ss << " 1:" << max_id << " <5e-4 total prob:";
+	  for (int ii=0;ii<na.size();++ii) {
+	    if (na[ii]!=max_id) {
+	      rinfo_ss << " " << na[ii];
+	    }
+	  }
+	  rinfo_ss << "\n";
+	} else {
+	  std::sort (percs.begin(),percs.end());
+	  std::reverse(percs.begin(),percs.end());
+	  for (int ii=0;ii<percs.size();++ii) {
+	    rinfo_ss << " " << percs[ii] << ":" << na[ii];
+	  }
+	  rinfo_ss << "\n";
+	}
+      }
+    } else {
+      if (perc=="PF") {
+	rinfo_ss << " EM_Unmap\n";
+      }
+      if (perc=="EM") {
+	rinfo_ss << " Even_PostEM\n";
+      }
+    }
+  }
+  delete[] buff;
+
+  still_reading = 0;
+  char *abuff = new char[buffsize];
+  char *acol;
+  char *aspc;
+  char *acurr;
+  char *nwline;
+  char *aincurr;
+
+
+  while ((still_reading = gzread(failfile_in,abuff,buffsize))!=0) {
+    std::string active = std::string(buff);
+    std::string new_active = active.substr(0,still_reading);
+    active = new_active;
+    new_active.clear();
+    
+    size_t nwline = active.find('\n');
+    size_t curr = 0;
+    while (nwline!=std::string::npos) {
+      std::string prefull = active.substr(curr,nwline-curr);
+      std::string full;
+      if (current=="") {
+	full = prefull;
+      } else {
+	full = current + prefull;
+	current = "";
+      }
+      size_t acol = full.find(':');
+      std::string lid = full.substr(0,acol);
+      if (acol!=std::string::npos) {
+	std::string reads = full.substr(acol+1,full.size()-(acol+1));
+	size_t aincurr = 0;
+	size_t aspc = reads.find(' ');
+	while (aspc!=std::string::npos) {
+	  std::string read = reads.substr(aincurr,aspc-aincurr);
+	  rinfo_ss << read;
+	  if (lid=="Pseudomapping_Fails") {
+	    rinfo_ss << " MapFail\n";
+	  }
+	  if (lid=="Likelihood_Filter_Fails") {
+	    rinfo_ss << " LikeFail\n";
+	  }
+	  aincurr=aspc+1;
+	  aspc = reads.find(' ',aincurr);
+	}
+	std::string last_read = reads.substr(aincurr,reads.size()-aincurr);
+	if (last_read!="") {
+	  rinfo_ss << last_read;
+	  if (lid=="Pseudomapping_Fails") {
+	    rinfo_ss << " MapFail\n";
+	  }
+	  if (lid=="Likelihood_Filter_Fails") {
+	    rinfo_ss << " LikeFail\n";
+	  }
+	}
+      } else {
+	std::cerr << "Error, didn't find : in line of fail file\n";
+      }
+      curr = nwline + 1;
+      nwline = active.find('\n',curr);
+    }
+    if (current=="") {
+      current = active.substr(curr,active.size()-curr);
+    } else {
+      std::string precurrent = active.substr(curr,active.size()-curr);
+      current = current + precurrent;
+    }
+  }
+  if (current!="") {
+    std::cerr << "Problem with failfile to readinfo, current not empty\n";
+  }
+
+  delete[] abuff;
+  gzwrite(rinfo_out,rinfo_ss.str().c_str(),rinfo_ss.str().size());
+  
+
+}
+
 std::vector<std::string> EarlyTaxonomy::TaxName(std::vector<std::string>& taxa) {
       
   std::string in_delim = "__";

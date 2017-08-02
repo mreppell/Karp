@@ -62,6 +62,7 @@ Command    |    Description
 **-\-no\_harp\_filter**  | Turn off the likelihood z-score filter.
 **-\-fail**            | Output a file listing the reads that fail to pseudoalign and those that are excluded by<br>the maximum likelihood z-score filter.
 **-\-max\_em\_it**       | Maximum number of iterations of EM algorithm before declaring failure<br>to converge [default = 1000].
+**-\-readinfo**          | Adds additional output file, that contains the posterior probabilities assigned to each individual read after the EM algorithm converges. The format is one read per line, followed by pairs of (percentage,reference ID from fasta).
 
 #### Tabulate
 After multiple samples have been classified using Karp, the program can be used to calculate some basic summary statistics using the 'tabulate' command.

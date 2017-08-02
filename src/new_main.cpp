@@ -183,7 +183,7 @@ int main(int argc, char** argv) {
     //      opt.it_skip = initSkip.getValue();
     std::string all_samples = tabSamples.getValue();
     
-    std::string version = "release v1.0";
+    std::string version = "release v1.1";
     opt.version = version;
     bool delete_fail = false;
 

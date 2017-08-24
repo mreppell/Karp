@@ -464,6 +464,7 @@ double ReadProcessor::Alignment(const char* &s1,const char* &s2,const char* &q1,
   double reverse_likelihood = calcLikelihood(reverse_alignment.cigar_string,q2,illumina_version);
   
   double read_likelihood = forward_likelihood + reverse_likelihood;
+
   auto f1 = map_entry.counts.find(read_likelihood);
   if (f1==map_entry.counts.end()) {
     std::pair<double, int> centry(read_likelihood,1);
@@ -471,14 +472,15 @@ double ReadProcessor::Alignment(const char* &s1,const char* &s2,const char* &q1,
   } else {
     f1->second++;
   }
-
-  std::string seen_string = seqstring.substr(forward_alignment.ref_begin,std::strlen(s1)) + seqstring.substr(reverse_alignment.ref_begin,std::strlen(s2));
-  std::pair<std::string, double> nentry(seen_string, read_likelihood);
-  map_entry.seen_likes.insert(nentry);
-  map_entry.single_starts.push_back(forward_alignment.ref_begin);
-  map_entry.paired_starts.push_back(reverse_alignment.ref_begin);
+  if (forward_alignment.ref_begin > 0 && forward_alignment.ref_begin < std::strlen(s1) && reverse_alignment.ref_begin > 0 && reverse_alignment.ref_begin < std::strlen(s2)) { 
+    std::string seen_string = seqstring.substr(forward_alignment.ref_begin,std::strlen(s1)) + seqstring.substr(reverse_alignment.ref_begin,std::strlen(s2));
+    std::pair<std::string, double> nentry(seen_string, read_likelihood);
+    map_entry.seen_likes.insert(nentry);
+    map_entry.single_starts.push_back(forward_alignment.ref_begin);
+    map_entry.paired_starts.push_back(reverse_alignment.ref_begin);
+  }
   return read_likelihood;
-
+ 
 }
 
 double ReadProcessor::Alignment(const char* &s1,const char* &q1,int& ient,const uint64_t& linelength, bool& paired,rt_entry& map_entry,std::string& seqstring) {

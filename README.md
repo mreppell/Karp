@@ -113,9 +113,9 @@ In the example folder we now have the files `simulated.results.freqs` and `simul
 
 Taxonomy files should have two columns and be tab delimited, with the first column giving the ID for the haplotype matching the reference fasta file, and the second giving the taxonomic label. Examples of acceptable formats include:
 
-815395	 Bacteria;Firmicutes;Bacilli;Bacillales;
-815395	 k__Bacteria;p__Firmicutes;c__Bacilli;o__Bacillales;
-815395	 k__Bacteria; p__Firmicutes; c__Bacilli; o__Bacillales; f__; g__; s__
+	 815395	 Bacteria;Firmicutes;Bacilli;Bacillales;
+	 815395	 k__Bacteria;p__Firmicutes;c__Bacilli;o__Bacillales;
+	 815395	 k__Bacteria; p__Firmicutes; c__Bacilli; o__Bacillales; f__; g__; s__
 
 ## Trouble Shooting
 

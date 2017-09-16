@@ -18,7 +18,7 @@ If you get an error message during compilation see the bottom of this readme for
 
 ## Requirements
 
-Karp requires CMake v2.8+, ZLIB, HDF5, Eigen and TCLAP. The Eigen and TCLAP libraries are included in this repository and the downloadable .tar package, but ZLIB and HDF5 are not.
+Karp requires CMake v2.8+, ZLIB, HDF5, Eigen and TCLAP. The Eigen and TCLAP libraries are included in this repository and the downloadable .tar package.
 
 ## Usage
 

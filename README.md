@@ -44,7 +44,7 @@ The main function of Karp is to quantify the taxonomy in a pooled DNA sample, th
 ---------------------------------------- | --------------------------------
 **-r / -\-ref**          | Reference fasta files, must have matching .fai file created with samtools faidx.<br>Multiple files entered with comma delimiter.
 **-i / -\-index**        | Name of k-mer index file built with 'index'
-**-f / -\-forward**      | Fastq files to be quantified, can be gzipped. Enter multiple files with comma<br>separating them. If quantifying single-end reads, enter fastq files with<br>this command. If quantifying paired-end reads enter forward files with <br>this command.
+**-f / -\-forward**      | Fastq files to be quantified, can be gzipped. Enter multiple files with comma<br>separating them. If quantifying single-end reads, enter fastq files with<br>this command. If quantifying paired-end reads enter forward files with <br>this command. **Note: Karp requires fastq files with base quality scores, it does not work with fasta files**
 **-\-paired**            | Enter this flag if you are quantifying paired-end reads
 **-q / -\-reverse**      | Reverse oriented fastq files to be quantified. Should match order of files<br>entered with -\-forward. Can be gzipped.
 **-t / -\-tax** | Taxonomy file(s) matching reference fasta file(s). See note below for more<br>details about acceptable formats.

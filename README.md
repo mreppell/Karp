@@ -109,7 +109,7 @@ This will create the index file `reference.index`. Next we quantify the simulate
 
 In the example folder we now have the files `simulated.results.freqs` and `simulated.results.log`. `simulated.results.freqs` contains Karp's estimates of the number of reads each reference sequence in `reference.fasta` contributed to the simulated sample. `simulated.results.log` contains information about the Karp run we just performed.
 
-##Taxonomy File Format
+## Taxonomy File Format
 
 Taxonomy files should have two columns and be tab delimited, with the first column giving the ID for the haplotype matching the reference fasta file, and the second giving the taxonomic label. Examples of acceptable formats include:
 

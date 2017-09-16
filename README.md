@@ -16,6 +16,10 @@ After cloning the repository, or downloading and decompressing the tarball follo
 This should create a working karp executable in the folder /src
 If you get an error message during compilation see the bottom of this readme for trouble shooting tips.
 
+## Requirements
+
+Karp requires CMake v2.8+, ZLIB, HDF5, Eigen and TCLAP. The Eigen and TCLAP libraries are included in this repository and the downloadable .tar package, but ZLIB and HDF5 are not.
+
 ## Usage
 
 Command    |    Description
@@ -28,7 +32,7 @@ The first stage of analysis with Karp is building the k-mer index for pseudoalig
 
 Command    |         Description
 ------------------ | -------------------------------------------------------------------------------------
-**-r / -\-ref**        | Reference fasta file to build index from, must have matching .idx file created with samtools faidx.<br> Enter multiple files with comma delimiter.
+**-r / -\-ref**        | Reference fasta file to build index from, must have matching .fai file created with samtools faidx.<br> Enter multiple files with comma delimiter.
 **-i / -\-index**  | Name of index file to output
 **-k / -\-kmer**   | Length of k-mer to use when building index, must be odd and range between 3 and 31 [default = 31].
 
@@ -38,7 +42,7 @@ The main function of Karp is to quantify the taxonomy in a pooled DNA sample, th
 
  Command                              |    Description
 ---------------------------------------- | --------------------------------
-**-r / -\-ref**          | Reference fasta files, must have matching .idx file created with samtools faidx.<br>Multiple files entered with comma delimiter.
+**-r / -\-ref**          | Reference fasta files, must have matching .fai file created with samtools faidx.<br>Multiple files entered with comma delimiter.
 **-i / -\-index**        | Name of k-mer index file built with 'index'
 **-f / -\-forward**      | Fastq files to be quantified, can be gzipped. Enter multiple files with comma<br>separating them. If quantifying single-end reads, enter fastq files with<br>this command. If quantifying paired-end reads enter forward files with <br>this command.
 **-\-paired**            | Enter this flag if you are quantifying paired-end reads
@@ -104,6 +108,14 @@ This will create the index file `reference.index`. Next we quantify the simulate
 ``
 
 In the example folder we now have the files `simulated.results.freqs` and `simulated.results.log`. `simulated.results.freqs` contains Karp's estimates of the number of reads each reference sequence in `reference.fasta` contributed to the simulated sample. `simulated.results.log` contains information about the Karp run we just performed.
+
+##Taxonomy File Format
+
+Taxonomy files should have two columns and be tab delimited, with the first column giving the ID for the haplotype matching the reference fasta file, and the second giving the taxonomic label. Examples of acceptable formats include:
+
+815395	 Bacteria;Firmicutes;Bacilli;Bacillales;
+815395	 k__Bacteria;p__Firmicutes;c__Bacilli;o__Bacillales;
+815395	 k__Bacteria; p__Firmicutes; c__Bacilli; o__Bacillales; f__; g__; s__
 
 ## Trouble Shooting
 
